@@ -5,7 +5,7 @@ chrome.alarms.onAlarm.addListener(function (alarm) {
         type: "basic",
         iconUrl: "128.png",
         title: "DRINK WATER",
-        "message": "STAY HYDRATED BRO !! Don't you wanna look fresh ? Then take a pause friend"
+        "message": "STAY HYDRATED !! Don't you wanna look fresh ?"
     }, function (notifications) {
         setTimeout(function () { chrome.notifications.clear("limit", function () { }); }, 5000);
     })
@@ -18,10 +18,13 @@ createAlarm()
 
 chrome.runtime.onMessage.addListener(
     function (request, sender, sendResponse) {
-        console.log("event receive")
         defaultDuration = request.minutes * 1.0;
-        createAlarm();
-        sendResponse({ sucess: true });
+        console.log("Event received");
+
+        if (defaultDuration != 0) {
+            createAlarm();
+            sendResponse({ sucess: true });
+        }
 
     }
 );

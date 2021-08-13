@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "version": "1.0.0",
-  "name": "Stay Hydrated",
+  "name": "Stay hydrated",
   "description": "Water Reminder for you",
   "icons": {
     "16": "128.png",
