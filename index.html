@@ -8,9 +8,19 @@
     <title>Stay Hydrated</title>
   </head>
   <body>
-    <input type="number" placeholder="Enter in Minutes.." id="num" min="1" />
-    <button id="add"><strong>Remind me</strong></button>
+    <input
+      type="text"
+      placeholder="Reminder label (e.g. Water)"
+      id="label"
+      maxlength="20"
+    />
+    <input type="number" placeholder="Interval (min)" id="num" min="1" />
+    <button id="add"><strong>Add Reminder</strong></button>
+    <button id="pause"></button>
     <div id="status"></div>
+    <div id="reminderList"></div>
+    <div id="reminderCount"></div>
+    <div id="snoozeInfo" style="color: #fff"></div>
     <h4>HOPE YOU ARE DOING WELL! Don't you wanna stay Hydrated?</h4>
     <script src="script.js" type="text/javascript"></script>
   </body>

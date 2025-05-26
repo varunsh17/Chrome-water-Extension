@@ -1,45 +1,117 @@
 const statusDiv = document.getElementById("status");
 const input = document.getElementById("num");
+const labelInput = document.getElementById("label");
 const button = document.getElementById("add");
+const pauseBtn = document.getElementById("pause");
+const reminderListDiv = document.getElementById("reminderList");
+const reminderCountDiv = document.getElementById("reminderCount");
+const snoozeInfoDiv = document.getElementById("snoozeInfo");
 
 function showStatus(msg, type = "info") {
   statusDiv.textContent = msg;
   statusDiv.style.color = type === "error" ? "red" : "limegreen";
 }
 
-function remind() {
+function updatePauseButton(paused) {
+  pauseBtn.textContent = paused ? "Resume" : "Pause";
+}
+
+function addReminder() {
   const minutes = parseInt(input.value);
+  const label = labelInput.value.trim() || "Reminder";
   if (isNaN(minutes) || minutes <= 0) {
-    showStatus("Please enter a valid number greater than 0.", "error");
+    showStatus("Enter a valid interval (min > 0).", "error");
     return;
   }
-  showStatus("Setting reminder...");
-  chrome.runtime.sendMessage({ minutes }, function (response) {
-    if (chrome.runtime.lastError) {
-      showStatus(
-        "Extension error: " + chrome.runtime.lastError.message,
-        "error"
-      );
+  chrome.storage.local.get({ reminders: [] }, (data) => {
+    const reminders = data.reminders;
+    const id = Date.now().toString();
+    reminders.push({ id, label, minutes });
+    chrome.storage.local.set({ reminders }, () => {
+      chrome.runtime.sendMessage({ addReminder: { id, label, minutes } });
+      showStatus(`Added: ${label} (${minutes} min)`);
+      input.value = "";
+      labelInput.value = "";
+      renderReminders();
+    });
+  });
+}
+
+function removeReminder(id) {
+  chrome.storage.local.get({ reminders: [] }, (data) => {
+    const reminders = data.reminders.filter((r) => r.id !== id);
+    chrome.storage.local.set({ reminders }, () => {
+      chrome.runtime.sendMessage({ removeReminder: id });
+      showStatus("Reminder removed.");
+      renderReminders();
+    });
+  });
+}
+
+function renderReminders() {
+  chrome.storage.local.get({ reminders: [] }, (data) => {
+    reminderListDiv.innerHTML = "";
+    if (data.reminders.length === 0) {
+      reminderListDiv.innerHTML = "<em>No reminders set.</em>";
       return;
     }
-    if (response && response.success) {
-      showStatus(`Alarm set for every ${minutes} minute(s).`);
-      chrome.storage.local.set({ lastMinutes: minutes });
+    data.reminders.forEach((reminder) => {
+      const div = document.createElement("div");
+      div.className = "reminder-item";
+      div.innerHTML = `
+        <span>${reminder.label} (${reminder.minutes} min)</span>
+        <button data-id="${reminder.id}" class="removeBtn">Remove</button>
+      `;
+      reminderListDiv.appendChild(div);
+    });
+    document.querySelectorAll(".removeBtn").forEach((btn) => {
+      btn.onclick = () => removeReminder(btn.getAttribute("data-id"));
+    });
+  });
+}
+
+function togglePause() {
+  chrome.storage.local.get("paused", (data) => {
+    const paused = !data.paused;
+    chrome.storage.local.set({ paused }, () => {
+      updatePauseButton(paused);
+      chrome.runtime.sendMessage({ pauseToggle: paused });
+      showStatus(paused ? "Reminders paused." : "Reminders resumed.");
+    });
+  });
+}
+
+function updateReminderCount() {
+  chrome.storage.local.get(["remindersSentToday"], (data) => {
+    reminderCountDiv.textContent =
+      "Reminders sent today: " + (data.remindersSentToday || 0);
+  });
+}
+
+function updateSnoozeInfo() {
+  chrome.storage.local.get(["snoozedUntil"], (data) => {
+    if (data.snoozedUntil && Date.now() < data.snoozedUntil) {
+      const mins = Math.ceil((data.snoozedUntil - Date.now()) / 60000);
+      snoozeInfoDiv.textContent = `Snoozed for ${mins} more minute(s).`;
     } else {
-      showStatus(
-        "Failed to set alarm: " + (response?.error || "Unknown error"),
-        "error"
-      );
+      snoozeInfoDiv.textContent = "";
     }
   });
 }
 
-// Load last used interval
-chrome.storage.local.get("lastMinutes", (data) => {
-  if (data.lastMinutes) {
-    input.value = data.lastMinutes;
-    showStatus(`Current interval: ${data.lastMinutes} minute(s).`);
-  }
+// Load reminders, pause state, etc.
+chrome.storage.local.get(["paused"], (data) => {
+  updatePauseButton(data.paused);
+  renderReminders();
+  updateReminderCount();
+  updateSnoozeInfo();
 });
 
-button.addEventListener("click", remind);
+button.addEventListener("click", addReminder);
+pauseBtn.addEventListener("click", togglePause);
+
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.updateReminderCount) updateReminderCount();
+  if (msg.updateSnoozeInfo) updateSnoozeInfo();
+  if (msg.refreshReminders) renderReminders();
+});
