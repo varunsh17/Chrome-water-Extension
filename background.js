@@ -1,30 +1,38 @@
-let defaultDuration = 1.0
-chrome.alarms.onAlarm.addListener(function (alarm) {
-    console.log(alarm)
-    chrome.notifications.create("limit", {
-        type: "basic",
-        iconUrl: "128.png",
-        title: "DRINK WATER",
-        "message": "STAY HYDRATED !! Don't you wanna look fresh ?"
-    }, function (notifications) {
-        setTimeout(function () { chrome.notifications.clear("limit", function () { }); }, 5000);
-    })
-})
-
-function createAlarm() {
-    chrome.alarms.create("drink_water", { periodInMinutes: defaultDuration });
-}
-createAlarm()
-
-chrome.runtime.onMessage.addListener(
-    function (request, sender, sendResponse) {
-        defaultDuration = request.minutes * 1.0;
-        console.log("Event received");
-
-        if (defaultDuration != 0) {
-            createAlarm();
-            sendResponse({ sucess: true });
-        }
-
+// Listen for alarms
+chrome.alarms.onAlarm.addListener((alarm) => {
+  console.log("Alarm triggered:", alarm.name);
+  chrome.notifications.create(
+    "limit",
+    {
+      type: "basic",
+      iconUrl: "128.png",
+      title: "DRINK WATER",
+      message: "STAY HYDRATED !! Don't you wanna look fresh?",
+    },
+    () => {
+      setTimeout(() => {
+        chrome.notifications.clear("limit");
+      }, 5000);
     }
-);
+  );
+});
+
+// Create an alarm
+function createAlarm(duration) {
+  chrome.alarms.clearAll(() => {
+    chrome.alarms.create("drink_water", { periodInMinutes: duration });
+    chrome.storage.local.set({ lastMinutes: duration });
+    console.log("Alarm created with duration:", duration);
+  });
+}
+
+// Listen for messages from popup
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.minutes && request.minutes > 0) {
+    createAlarm(request.minutes);
+    sendResponse({ success: true });
+  } else {
+    sendResponse({ success: false, error: "Invalid duration" });
+  }
+  return true; // Needed for async sendResponse
+});

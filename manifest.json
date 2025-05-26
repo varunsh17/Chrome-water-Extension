@@ -8,12 +8,11 @@
     "48": "128.png",
     "128": "128.png"
   },
-  "browser_action": {
+  "action": {
     "default_popup": "index.html"
   },
   "background": {
-    "scripts": ["background.js"],
-    "persistent": false
+    "service_worker": "background.js"
   },
-  "permissions": ["alarms", "notifications"]
+  "permissions": ["alarms", "notifications", "storage"]
 }
